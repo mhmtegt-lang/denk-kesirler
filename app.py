@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 # Sayfa ayarları
-st.set_page_config(page_title="Kesir Fabrikası v3 - Fixed", layout="wide")
+st.set_page_config(page_title="Kesir Fabrikası v4", layout="wide")
 
-st.title("🍫 Kesir Fabrikası: Alan Korunumu (Hatasız Model)")
-st.write("Sadeleştirme ve genişletme modelleri görsellere uygun şekilde düzeltilmiştir.")
+st.title("🍫 Kesir Fabrikası: Alan Korunumu")
+st.write("Sadeleştirme ve genişletmede sonucun gizlendiği geliştirilmiş eğitim modeli.")
 
 # --- Veri Seti ---
 problems = {
@@ -22,7 +22,7 @@ problems = {
 
 # --- Sidebar ---
 st.sidebar.header("🔍 Örnek Seçimi")
-selected_key = st.sidebar.selectbox("Lütfen bir örnek seçin:", list(problems.keys()))
+selected_key = st.sidebar.selectbox("Bir örnek seçin:", list(problems.keys()))
 prob = problems[selected_key]
 
 mod = st.sidebar.radio(
@@ -32,26 +32,26 @@ mod = st.sidebar.radio(
 
 # --- Görselleştirme Fonksiyonu ---
 def draw_fraction_model(base_num, base_den, factor, step_mode, op_type):
-    fig, ax = plt.subplots(figsize=(10, 3))
+    fig, ax = plt.subplots(figsize=(10, 3.5))
     rect = patches.Rectangle((0, 0), 1, 1, linewidth=2, edgecolor='black', facecolor='white')
     ax.add_patch(rect)
     
-    # Boyalı alan oranı her zaman aynıdır
+    # Alan her zaman sabittir
     shaded_area = patches.Rectangle((0, 0), base_num/base_den, 1, facecolor="#3498db", alpha=0.6)
     ax.add_patch(shaded_area)
 
-    # Dikey sütunlar (Ana payda)
+    # Dikey sütunlar
     for i in range(1, base_den):
         ax.axvline(x=i/base_den, color='black', linewidth=1.5)
 
-    # Yatay çizgiler (Genişletme/Sadeleştirme katmanı)
+    # Yatay çizgiler (Sadeleştirmede başlangıçta var, genişletmede sonda var)
     show_horizontal = False
     ls = '-'
     alpha = 1.0
     
     if op_type == "expand":
-        if step_mode == "2. İşlem Sonucu": show_horizontal = True
-        if step_mode == "3. Alan Korunumu Analizi": show_horizontal = True; ls = '--'; alpha = 0.4
+        if step_mode != "1. Başlangıç Hali": show_horizontal = True
+        if step_mode == "3. Alan Korunumu Analizi": ls = '--'; alpha = 0.4
     else: # simplify
         if step_mode == "1. Başlangıç Hali": show_horizontal = True
         if step_mode == "3. Alan Korunumu Analizi": show_horizontal = True; ls = '--'; alpha = 0.4
@@ -63,34 +63,40 @@ def draw_fraction_model(base_num, base_den, factor, step_mode, op_type):
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis('off')
     return fig
 
-# --- İçerik ---
+# --- İçerik ve Mantık ---
 col1, col2 = st.columns([2, 1])
 
-with col1:
-    # Başlıkları ve kesirleri belirle
-    if prob["type"] == "expand":
-        val1 = f"{prob['base_num']}/{prob['base_den']}"
-        val2 = f"{prob['base_num']*prob['factor']}/{prob['base_den']*prob['factor']}"
-    else:
-        val1 = f"{prob['base_num']*prob['factor']}/{prob['base_den']*prob['factor']}"
-        val2 = f"{prob['base_num']}/{prob['base_den']}"
+# Kesir değerlerini hesapla
+start_num = prob['base_num'] * prob['factor'] if prob['type'] == "simplify" else prob['base_num']
+start_den = prob['base_den'] * prob['factor'] if prob['type'] == "simplify" else prob['base_den']
+res_num = prob['base_num'] if prob['type'] == "simplify" else prob['base_num'] * prob['factor']
+res_den = prob['base_den'] if prob['type'] == "simplify" else prob['base_den'] * prob['factor']
 
+with col1:
     if mod == "1. Başlangıç Hali":
-        st.subheader(f"📍 İlk Hali: {val1}")
-        st.pyplot(draw_fraction_model(prob['base_num'], prob['base_den'], prob['factor'], mod, prob['type']))
+        st.subheader(f"📍 Başlangıç Kesri: {start_num}/{start_den}")
     elif mod == "2. İşlem Sonucu":
-        st.subheader(f"✅ İşlem Sonucu: {val2}")
-        st.pyplot(draw_fraction_model(prob['base_num'], prob['base_den'], prob['factor'], mod, prob['type']))
+        st.subheader(f"✅ Sonuç: {res_num}/{res_den}")
     else:
-        st.subheader("🕵️ Alan Korunumu Analizi")
-        st.pyplot(draw_fraction_model(prob['base_num'], prob['base_den'], prob['factor'], mod, prob['type']))
+        st.subheader("🕵️ Alan Korunumu: Neler Değişti?")
+        
+    st.pyplot(draw_fraction_model(prob['base_num'], prob['base_den'], prob['factor'], mod, prob['type']))
 
 with col2:
     st.markdown("### 📝 Matematiksel İşlem")
-    if prob["type"] == "expand":
-        st.latex(rf"\frac{{{prob['base_num']}}}{{{prob['base_den']}}} \times {prob['factor']} = \frac{{{prob['base_num']*prob['factor']}}}{{{prob['base_den']*prob['factor']}}}")
-        st.write("**Genişletme:** Parçalar bölündü, sayı arttı.")
+    
+    if mod == "1. Başlangıç Hali":
+        # Başlangıçta sadece kesrin kendisini göster, işlemi gizle
+        st.latex(rf"\text{{Kesir: }} \frac{{{start_num}}}{{{start_den}}}")
+        st.info("Bu kesri sadeleştirdiğimizde veya genişlettiğimizde alanın nasıl değişeceğini tahmin edin.")
+    
     else:
-        st.latex(rf"\frac{{{prob['base_num']*prob['factor']}}}{{{prob['base_den']*prob['factor']}}} \div {prob['factor']} = \frac{{{prob['base_num']}}}{{{prob['base_den']}}}")
-        st.write("**Sadeleştirme:** Parçalar birleşti, sayı küçüldü.")
-    st.info("Fark ettiyseniz mavi boyalı alanın büyüklüğü iki durumda da aynı kaldı!")
+        # 2. ve 3. adımda tam işlemi göster
+        if prob["type"] == "expand":
+            st.latex(rf"\frac{{{prob['base_num']}}}{{{prob['base_den']}}} \xrightarrow{{\times {prob['factor']}}} \frac{{{res_num}}}{{{res_den}}}")
+            st.write(f"**Genişletme:** Parçalar {prob['factor']} katına çıktı.")
+        else:
+            st.latex(rf"\frac{{{start_num}}}{{{start_den}}} \xrightarrow{{\div {prob['factor']}}} \frac{{{res_num}}}{{{res_den}}}")
+            st.write(f"**Sadeleştirme:** Parçalar {prob['factor']}'erli gruplanıp birleşti.")
+            
+        st.success("Gördüğünüz gibi, sayısal değerler değişse de kapladığı alan aynı kaldı!")
